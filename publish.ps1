@@ -1,4 +1,4 @@
-# Copies RoundStats match history into this site's data folder, then commits and pushes it.
+﻿# Copies RoundStats match history into this site's data folder, then commits and pushes it.
 # The RoundStats mod runs this after every point and game (set Publishing.Script in its config).
 param(
     [string]$HistoryDir = "$env:APPDATA\r2modmanPlus-local\ROUNDS\profiles\Foobar\BepInEx\config\RoundStats\history",
@@ -17,7 +17,7 @@ function Log($message) {
 
 # git writes progress to stderr, which Windows PowerShell turns into errors under 'Stop'.
 # Run it with errors relaxed and judge success by the exit code instead.
-function Git {
+function Invoke-Git {
     $ErrorActionPreference = 'Continue'
     $output = & git -C $site @args 2>&1 | Out-String
     [pscustomobject]@{ Ok = ($LASTEXITCODE -eq 0); Output = $output.Trim() }
@@ -25,7 +25,12 @@ function Git {
 
 # Only one publish at a time, even if launched twice.
 $mutex = New-Object System.Threading.Mutex($false, 'Global\RoundStatsPublish')
-if (-not $mutex.WaitOne([TimeSpan]::FromMinutes(2))) { Log 'Another publish is still running; skipped.'; exit 0 }
+try {
+    if (-not $mutex.WaitOne([TimeSpan]::FromMinutes(2))) { Log 'Another publish is still running; skipped.'; exit 0 }
+}
+catch [System.Threading.AbandonedMutexException] {
+    # A previous run was killed while holding the lock; we own it now.
+}
 
 try {
     New-Item -ItemType Directory -Force $matchesDir | Out-Null
@@ -47,13 +52,13 @@ try {
 
     if ($NoPush) { Log "Updated data ($($names.Count) matches, live=$hasLive); push skipped."; exit 0 }
 
-    Git add data | Out-Null
-    if ((Git diff --cached --quiet).Ok) { Log 'No changes.'; exit 0 }
+    Invoke-Git add data | Out-Null
+    if ((Invoke-Git diff --cached --quiet).Ok) { Log 'No changes.'; exit 0 }
 
     $message = if ($hasLive) { 'Live game update' } else { "Match history: $($names.Count) games" }
-    $result = Git commit -m $message
+    $result = Invoke-Git commit -m $message
     if (-not $result.Ok) { Log "Commit failed: $($result.Output)"; exit 1 }
-    $result = Git push
+    $result = Invoke-Git push
     if (-not $result.Ok) { Log "Push failed: $($result.Output)"; exit 1 }
     Log "Published: $message"
 }
