@@ -15,6 +15,14 @@ function Log($message) {
     Add-Content -Path $log -Value "$(Get-Date -Format s)  $message" -Encoding utf8
 }
 
+# git writes progress to stderr, which Windows PowerShell turns into errors under 'Stop'.
+# Run it with errors relaxed and judge success by the exit code instead.
+function Git {
+    $ErrorActionPreference = 'Continue'
+    $output = & git -C $site @args 2>&1 | Out-String
+    [pscustomobject]@{ Ok = ($LASTEXITCODE -eq 0); Output = $output.Trim() }
+}
+
 # Only one publish at a time, even if launched twice.
 $mutex = New-Object System.Threading.Mutex($false, 'Global\RoundStatsPublish')
 if (-not $mutex.WaitOne([TimeSpan]::FromMinutes(2))) { Log 'Another publish is still running; skipped.'; exit 0 }
@@ -39,15 +47,14 @@ try {
 
     if ($NoPush) { Log "Updated data ($($names.Count) matches, live=$hasLive); push skipped."; exit 0 }
 
-    git -C $site add data 2>&1 | Out-Null
-    git -C $site diff --cached --quiet
-    if ($LASTEXITCODE -eq 0) { Log 'No changes.'; exit 0 }
+    Git add data | Out-Null
+    if ((Git diff --cached --quiet).Ok) { Log 'No changes.'; exit 0 }
 
     $message = if ($hasLive) { 'Live game update' } else { "Match history: $($names.Count) games" }
-    $out = git -C $site commit -m $message 2>&1 | Out-String
-    if ($LASTEXITCODE -ne 0) { Log "Commit failed: $out"; exit 1 }
-    $out = git -C $site push 2>&1 | Out-String
-    if ($LASTEXITCODE -ne 0) { Log "Push failed: $out"; exit 1 }
+    $result = Git commit -m $message
+    if (-not $result.Ok) { Log "Commit failed: $($result.Output)"; exit 1 }
+    $result = Git push
+    if (-not $result.Ok) { Log "Push failed: $($result.Output)"; exit 1 }
     Log "Published: $message"
 }
 catch {
