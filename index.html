@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ROUNDS Stats</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>ROUNDS Stats</h1>
+    <p id="updated" class="muted"></p>
+  </header>
+
+  <main>
+    <section id="live" hidden>
+      <h2><span class="dot"></span> Live game</h2>
+      <p id="live-meta" class="muted"></p>
+      <div class="table-wrap"><table id="live-table"></table></div>
+      <div id="live-points" class="points"></div>
+    </section>
+
+    <section>
+      <h2>Leaderboard</h2>
+      <p class="muted">Finished games only. Click a column to sort.</p>
+      <div class="table-wrap"><table id="leaderboard"></table></div>
+    </section>
+
+    <section>
+      <h2>Who kills whom</h2>
+      <p class="muted">Row player killed column player this many times.</p>
+      <div class="table-wrap"><table id="rivals" class="matrix"></table></div>
+    </section>
+
+    <section>
+      <h2>Cards</h2>
+      <p class="muted">How often players holding each card at the end of a game won it. Cards seen in at least 3 hands.</p>
+      <div class="table-wrap"><table id="cards"></table></div>
+    </section>
+
+    <section>
+      <h2>Matches</h2>
+      <div id="matches"></div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
