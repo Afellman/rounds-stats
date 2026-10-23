@@ -197,7 +197,7 @@ function renderMatches(matches) {
   }));
 }
 
-let lastIndex = '';
+let lastIndex = null;
 async function load() {
   let index;
   try {
